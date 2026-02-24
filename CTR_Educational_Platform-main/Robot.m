@@ -62,6 +62,7 @@ classdef Robot < handle
             % ********************************************************
             d = [self.tubes.d];
             [transition_zones, ~] = sort([rho, d+rho]);
+            transition_zones = unique(transition_zones, 'stable');
             s = diff(transition_zones);
             if s(end) == 0
                 s = s(1:end-1);
@@ -124,9 +125,9 @@ classdef Robot < handle
                 [chi,gamma] = self.linkcurvature(E(tube_idx), OD(tube_idx), ID(tube_idx), k_tran, theta(tube_idx));
                 K(i) = sqrt(chi^2 + gamma^2);
                 if i == 1
-                    phi(i) = atan(gamma / chi); % delta phi 
+                    phi(i) = atan2(gamma, chi); % delta phi 
                 else
-                    phi(i) = atan(gamma / chi) - phi(i-1); % delta phi 
+                    phi(i) = atan2(gamma, chi) - phi(i-1); % delta phi 
                 end 
                 
             end 
