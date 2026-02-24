@@ -61,16 +61,12 @@ classdef Robot < handle
             %                          TODO
             % ********************************************************
             d = [self.tubes.d];
-            T1 = rho(1);
-            T2 = rho(2);
-            T3 = T1 + d(1);
-            T4 = T2 + d(2);
-            T = [T1, T2, T3, T4];
-            T = sort(T);
-            s = zeros(1, 3);
-            for i = 1:length(T)-1
-                s(i) = T(i+1) - T(i);
-            end
+            [transition_zones, ~] = sort([rho, d+rho]);
+            transition_zones = unique(transition_zones, 'stable');
+            s = diff(transition_zones);
+            if s(end) == 0
+                s = s(1:end-1);
+            end 
         end
 
         % Function to get theta values
@@ -86,13 +82,11 @@ classdef Robot < handle
             end
         end
 
-        function [k_in,phi] = linkcurvature(self, E, OD, ID, k, theta)
+        function [chi,gamma] = linkcurvature(self, E, OD, ID, k, theta)
             % *YOUR CODE HERE*
             I = pi * (OD.^4 - ID.^4) / 64;
             chi = sum(E.*I.*k.*cos(theta)) / sum(E.*I);
             gamma = sum(E.*I.*k.*sin(theta)) / sum(E.*I);
-            k_in = sqrt(chi^2 + gamma^2);
-            phi = atan(gamma/chi);
         end
 
 
@@ -140,30 +134,34 @@ classdef Robot < handle
             end 
             %}
             k_curr = [k(1), 0];
-            [k1, phi_1] = self.linkcurvature(E, OD, ID, k_curr, theta);%link 1 - outer tube curved, inner tube straight (k=0)
-            [k2, phi_2] = self.linkcurvature(E, OD, ID, k, theta);%link 2 - outer tube curved, inner tube curved
+            [k1, phi_1] = linkcurvature(E, OD, ID, k_curr, alpha);%link 1 - outer tube curved, inner tube straight (k=0)
+            [k2, phi_2] = linkcurvature(E, OD, ID, k, alpha);%link 2 - outer tube curved, inner tube surved
             k3 = k(2);%link 3 - outer tube terminated, inner tube curved
-            phi_3 = theta(2);
+            phi_3 = alpha(2);
             
-            K = [k1, k2, k3];
-            phi = [phi_1, phi_2 - phi_1, phi_3 - phi_2];
+            kl = [k1, k2, k3];
+            phil = [phi_1 - alpha(1), phi_2 - phi_1, phi_3 - phi_2];
         end
 
         function T = arckinematics(self, k, phi, l)
         %% YOUR CODE HERE
-            n = [cos(phi)*cos(k*l) sin(phi)*cos(k*l) -sin(k*l)]';
-            b = [-sin(phi) cos(phi) 0]';
-            t = [cos(phi)*sin(k*l) sin(phi)*sin(k*l) cos(k*l)]';
-            R = [n b t];
-            
-            if (k==0)
-                p = [0 0 l]';
+            if k > 0
+                R = [cos(phi)*cos(k*l), -sin(phi), cos(phi)*sin(k*l);
+                    sin(phi)*cos(k*l), cos(phi), sin(phi)*sin(k*l);
+                    -sin(k*l), 0, cos(k*l)];
                 
-            else
-                p = [(cos(phi)*(1-cos(k*l)))/k (sin(phi)*(1-cos(k*l)))/k sin(k*l)/k]';
-            end
-            
-            T = [R p; 0 0 0 1];
+                p = [(cos(phi) * (1-cos(k*l))) / k;
+                            (sin(phi) * (1-cos(k*l))) / k;
+                            sin(k*l) / k];
+            else 
+                R = [cos(phi), -sin(phi), 0;
+                    sin(phi), cos(phi), 0;
+                    0 0 1];
+                p = [0; 0; l;];
+                
+            end 
+            T = [R p;
+                0 0 0 1];
 
         end
 
