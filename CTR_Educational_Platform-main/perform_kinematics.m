@@ -10,7 +10,7 @@ tube3 = Tube(1.726*10^-3, 1.98*10^-3, 1/29, 250*10^-3, 50*10^-3, 1935*10^6);
 tubes = [tube1, tube2];
 % tubes = [tube1, tube2, tube3];
 
-robot = Robot(tubes, false);
+robot = Robot(tubes);
 
 % q values for testing with two tubes
 q_var = [0, 0, 0, 0; 

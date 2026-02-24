@@ -34,7 +34,7 @@ classdef Robot < handle
             self.lls = get_links(self, rho);
 
             % Now we calculate the phi and kappa values
-            [self.phi,self.kappa] = calculate_phi_and_kappa(self, theta, rho);
+            [self.phi,self.kappa] = calculate_phi_and_kappa(self, theta);
 
             % Finally we calculate the base to end effector transform
             T = calculate_transform(self, self.lls, self.phi, self.kappa);
@@ -63,9 +63,6 @@ classdef Robot < handle
             d = [self.tubes.d];
             [transition_zones, ~] = sort([rho, d+rho]);
             s = diff(transition_zones);
-            if s(end) == 0
-                s = s(1:end-1);
-            end 
         end
 
         % Function to get theta values
@@ -81,7 +78,12 @@ classdef Robot < handle
             end
         end
 
-        function [chi,gamma] = linkcurvature(self, E, OD, ID, k, theta)
+        function [chi,gamma] = linkcurvature(self, theta)
+            E = [self.tubes.E];
+            OD = [self.tubes.OD];
+            ID = [self.tubes.ID];
+            k = [self.tubes.k];
+
             % *YOUR CODE HERE*
             I = pi * (OD.^4 - ID.^4) / 64;
             chi = sum(E.*I.*k.*cos(theta)) / sum(E.*I);
@@ -93,21 +95,21 @@ classdef Robot < handle
         % configurations
         % Should return phi (1 x j vector, where j is num links)
         % and K (1 x j vector)
-        function [phi,K] = calculate_phi_and_kappa(self, theta, rho)
+        function [phi,K] = calculate_phi_and_kappa(self, theta)
             % ********************************************************
             %                          TODO
             % ********************************************************
-            ll = self.lls;
-            n_links = size(ll, 2);
-
-            K   = zeros(1,n_links); % Link Curvatures [m^-1]
-            phi = zeros(1,n_links); % Link Rotations [rad]
+            K   = zeros(1,nLinks); % Link Curvatures [m^-1]
+            phi = zeros(1,nLinks); % Link Rotations [rad]
 
             d = [self.tubes.d];
             E = [self.tubes.E];
-            OD = [self.tubes.od];
-            ID = [self.tubes.id];
+            OD = [self.tubes.OD];
+            ID = [self.tubes.ID];
             k = [self.tubes.k];
+
+            ll = self.lls;
+            n_links = size(ll, 2);
 
             % sorted tube properties 
             total_tube_length = d+rho;
@@ -121,7 +123,7 @@ classdef Robot < handle
                 k_tran = curved_tubes .* k(tube_idx); % only include present tubes
                 
                     
-                [chi,gamma] = self.linkcurvature(E(tube_idx), OD(tube_idx), ID(tube_idx), k_tran, theta(tube_idx));
+                [chi,gamma] = linkcurvature(E(tube_idx), OD(tube_idx), ID(tube_idx), k_tran, theta(tube_idx));
                 K(i) = sqrt(chi^2 + gamma^2);
                 if i == 1
                     phi(i) = atan(gamma / chi); % delta phi 
@@ -135,7 +137,7 @@ classdef Robot < handle
 
         function T = arckinematics(self, k, phi, l)
         %% YOUR CODE HERE
-            if k > 0
+            if k > 0;
                 R = [cos(phi)*cos(k*l), -sin(phi), cos(phi)*sin(k*l);
                     sin(phi)*cos(k*l), cos(phi), sin(phi)*sin(k*l);
                     -sin(k*l), 0, cos(k*l)];
@@ -163,9 +165,14 @@ classdef Robot < handle
             % ********************************************************
             %                          TODO
             % ********************************************************
+            ll = s;
+            phil = phi;
+            kl = K;
             T = eye(4);
-            for ii = 1 : size(self.lls, 2)
-                Tii = self.arckinematics(K(ii), phi(ii), s(ii));
+            links = cell(1,nLinks);
+
+            for ii = 1 : nLinks
+                Tii = arckinematics([kl(ii), phil(ii), ll(ii)]);
                 T = T * Tii;
             end
 

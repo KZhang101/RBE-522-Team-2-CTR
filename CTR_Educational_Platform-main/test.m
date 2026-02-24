@@ -5,7 +5,7 @@ startPose = Pose(0, 0, 0, 0, 0, 0);
 drive_bot = Drive(startPose);
 
 %% Test linear 1
-drive_bot.travel_for(10,0,0,0,0,0)
+drive_bot.travel_for(0,0,10,0,0,0)
 
 %% Test linear 2
 drive_bot.travel_for(0,10,0,0,0,0)
