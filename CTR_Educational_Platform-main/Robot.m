@@ -102,6 +102,7 @@ classdef Robot < handle
 
             K   = zeros(1,n_links); % Link Curvatures [m^-1]
             phi = zeros(1,n_links); % Link Rotations [rad]
+            phi_abs = zeros(1, n_links);
 
             d = [self.tubes.d];
             E = [self.tubes.E];
@@ -123,11 +124,12 @@ classdef Robot < handle
                     
                 [chi,gamma] = self.linkcurvature(E(tube_idx), OD(tube_idx), ID(tube_idx), k_tran, theta(tube_idx));
                 K(i) = sqrt(chi^2 + gamma^2);
+                phi_abs(i) = atan2(gamma, chi);
                 if i == 1
-                    phi(i) = atan2(gamma, chi); % delta phi 
+                    phi(i) = phi_abs(i);
                 else
-                    phi(i) = atan2(gamma, chi) - phi(i-1); % delta phi 
-                end 
+                    phi(i) = phi_abs(i) - phi_abs(i-1);
+                end
                 
             end 
 
