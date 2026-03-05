@@ -32,11 +32,11 @@ n = robot.num_tubes;
 % 3) IK options
 % ------------------------------------------------------------
 opts.maxIters    = 2000;
-opts.tol         = 1e-4;   % TODO: units must match tip_position() output (likely meters)
+opts.tol         = 1e-5;   % TODO: units must match tip_position() output (likely meters)
 opts.lambda      = 1e-2;
 opts.alpha       = 0.4;
-opts.h_rho_mm    = 0.2;    % mm perturbation
-opts.h_theta_deg = 0.5;    % deg perturbation
+opts.h_rho_mm    = 0.3;    % mm perturbation
+opts.h_theta_deg = 0.8;    % deg perturbation
 opts.q_min = [20; 20; 20;  -180; -180; -180];  % mm, deg
 opts.q_max = [50; 50; 50;   180;  180;  180];  % mm, deg
 
@@ -98,6 +98,7 @@ title('CTR IK: Desired targets and achieved tips');
 % Desired targets
 scatter3(targets(1,:), targets(2,:), targets(3,:), 60, 'filled');
 
+sum = 0;
 for k = 1:size(targets,2)
     
     xd = targets(:,k);
@@ -114,8 +115,12 @@ for k = 1:size(targets,2)
 
     fprintf('Target %d: converged=%d, iters=%d, final_err=%.6g\n', ...
         k, info.converged, info.iters, info.e_hist(end));
-
+    sum = sum + info.e_hist(end);
 end
+
+% Calculate the average error across all targets
+averageError = sum / size(targets, 2);
+fprintf('Average final error across all targets: %.6g\n', averageError);
 
 legend('Desired targets','Achieved tips');
 
