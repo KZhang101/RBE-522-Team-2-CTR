@@ -173,7 +173,7 @@ classdef Robot < handle
 
         end
 
-        function inputs = ik(q_var, target_position)
+        function inputs = ik(self, q_var, target_position)
             rho = get_rho_values(self, q_var); 
             theta = get_theta(self, q_var);
 
@@ -187,10 +187,23 @@ classdef Robot < handle
             for i=1:1:size(self.lls, 2)
                 c = [c, self.kappa(i), self.phi(i), self.lls(i)]
             end 
-            
+
             new_c = ikin(c, target_position); % [k, phi, l]
             c_diff = new_c - c; 
             delta_l = c_diff(3:3:end)
+
+            if self.num_tubes == 3
+                A = [-1, 1, 0;
+                    0 -1, 1;
+                    0, 0, -1] % 3 tubes
+            else 
+                A = [-1, 1;
+                    1 -1;
+                    -1, 1] % 2 tubes 
+            end 
+
+            delta_rho = pinv(A) * delta_l';
+            new_rho = rho + delta_rho';
 
 
     end
