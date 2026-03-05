@@ -172,6 +172,27 @@ classdef Robot < handle
             end
 
         end
+
+        function inputs = ik(q_var, target_position)
+            rho = get_rho_values(self, q_var); 
+            theta = get_theta(self, q_var);
+
+            % Next, we use rho to get the link lengths
+            self.lls = get_links(self, rho);
+
+            % Now we calculate the phi and kappa values
+            [self.phi,self.kappa] = calculate_phi_and_kappa(self, theta, rho);
+
+            c = []
+            for i=1:1:size(self.lls, 2)
+                c = [c, self.kappa(i), self.phi(i), self.lls(i)]
+            end 
+            
+            new_c = ikin(c, target_position); % [k, phi, l]
+            c_diff = new_c - c; 
+            delta_l = c_diff(3:3:end)
+
+
     end
 end
 
