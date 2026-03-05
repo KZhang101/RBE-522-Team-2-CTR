@@ -191,7 +191,7 @@ classdef Robot < handle
             % ind_params_des = desired [k1, phi1, l1, k2, phi2, l2, ...] column vector
             % q_current      = current actuation [rho1; rho2; rho3; theta1; theta2; theta3]
         
-            maxIter = 500;
+            maxIter = 1000;
             tol     = 1e-4;
             alpha   = 0.4;              % step size
             lambda  = 0.01;             % damping (tune this!)

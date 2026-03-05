@@ -20,7 +20,7 @@ robot = Robot(tubes);
 q_current = [10, 50, 80, 45, -45, 45];   % [rho mm; theta deg] — adjust units/format
 
 % Desired end-effector position (example)
-desired_pos = [0.05; 0.02; 0.12];     % [x; y; z] in meters
+desired_pos = [0; 0; 0];     % [x; y; z] in mm
 
 % Step 1: Task → Configuration
 fprintf('Running independent IK...\n');
@@ -34,8 +34,8 @@ fprintf('Running dependent IK...\n');
 [rho_des, theta_des] = robot.inv_kin_dep(ind_params_des(:,1), q_current);
 
 fprintf('Solved actuation:\n');
-fprintf('  rho  = [%.4f  %.4f  %.4f] mm\n', rho_des*1000);   % if rho in meters
-fprintf('  theta = [%.2f  %.2f  %.2f] deg\n', rad2deg(theta_des));
+fprintf('  rho  = [%.4f  %.4f  %.4f] mm\n', rho_des);   % if rho in meters
+fprintf('  theta = [%.2f  %.2f  %.2f] deg\n', theta_des);
 
 % Verification: forward check
 config_check = robot.forward_actuation_to_config(rho_des, theta_des);
