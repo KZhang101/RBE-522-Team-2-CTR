@@ -17,7 +17,7 @@ tubes = [tube1, tube2, tube3];
 robot = Robot(tubes);
 
 % Current actuation (example values — replace with real ones)
-q_current = [0; 50; 100; 0; 30; 60];   % [rho mm; theta deg] — adjust units/format
+q_current = [10, 50, 80, 45, -45, 45];   % [rho mm; theta deg] — adjust units/format
 
 % Desired end-effector position (example)
 desired_pos = [0.05; 0.02; 0.12];     % [x; y; z] in meters

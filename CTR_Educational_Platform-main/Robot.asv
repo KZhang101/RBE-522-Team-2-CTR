@@ -172,51 +172,65 @@ classdef Robot < handle
             end
 
         end
-        function [rho_des, theta_des] = inv_kin_dep(self, ind_params_des, q_current)
-    % ind_params_des = desired [k1, phi1, l1, k2, phi2, l2, ...] column vector
-    % q_current      = current actuation [rho1; rho2; rho3; theta1; theta2; theta3]
 
-    maxIter = 500;
-    tol     = 1e-4;
-    alpha   = 0.4;              % step size
-    lambda  = 0.01;             % damping (tune this!)
+        function T = calculate_transform2(self, c)
+            % ********************************************************
+            %                          TODO
+            % ********************************************************
+            T = eye(4);
+            for ii = 1 : size(self.lls, 2)
+                jj = 1;
+                Tii = self.arckinematics(c(jj), c(jj+1), s(jj+2));
+                T = T * Tii;
+            end
 
-    q = q_current;              % start from current actuation
-
-    for iter = 1:maxIter
-        % Forward: compute current config from current actuation
-        config_cur = forward_actuation_to_config(self, q(1:3), q(4:6));
-
-        % Error in configuration space
-        e = ind_params_des - config_cur;
-
-        if norm(e) < tol
-            break;
         end
 
-        % Numerical Jacobian using central differences
-        f_handle = @(qq) forward_actuation_to_config(self, qq(1:3), qq(4:6));
-        J_dep = central_diff_jacobian(f_handle, q, 1e-7);
-
-        % Damped least squares
-        J_dls = J_dep' / (J_dep * J_dep' + lambda^2 * eye(size(J_dep,1)));
-        dq = alpha * J_dls * e;
-
-        % Update actuation
-        q = q + dq;
-
-        % Optional: enforce physical constraints
-        % q(1:3) = max(q(1:3), 0);             % rho >= 0
-        % q(1:3) = sort(q(1:3));               % keep rho ordered if needed
-    end
-
-    if norm(e) >= tol
-        warning('inv_kin_dep did not converge. Final config error: %.4f', norm(e));
-    end
-
-    rho_des  = q(1:3);
-    theta_des = q(4:6);
-end
+        function [rho_des, theta_des] = inv_kin_dep(self, ind_params_des, q_current)
+            % ind_params_des = desired [k1, phi1, l1, k2, phi2, l2, ...] column vector
+            % q_current      = current actuation [rho1; rho2; rho3; theta1; theta2; theta3]
+        
+            maxIter = 500;
+            tol     = 1e-4;
+            alpha   = 0.4;              % step size
+            lambda  = 0.01;             % damping (tune this!)
+        
+            q = q_current;              % start from current actuation
+        
+            for iter = 1:maxIter
+                % Forward: compute current config from current actuation
+                config_cur = forward_actuation_to_config(self, q(1:3), q(4:6));
+        
+                % Error in configuration space
+                e = ind_params_des - config_cur;
+        
+                if norm(e) < tol
+                    break;
+                end
+        
+                % Numerical Jacobian using central differences
+                f_handle = @(qq) forward_actuation_to_config(self, qq(1:3), qq(4:6));
+                J_dep = central_diff_jacobian(f_handle, q, 1e-7);
+        
+                % Damped least squares
+                J_dls = J_dep' / (J_dep * J_dep' + lambda^2 * eye(size(J_dep,1)));
+                dq = alpha * J_dls * e;
+        
+                % Update actuation
+                q = q + dq;
+        
+                % Optional: enforce physical constraints
+                % q(1:3) = max(q(1:3), 0);             % rho >= 0
+                % q(1:3) = sort(q(1:3));               % keep rho ordered if needed
+            end
+        
+            if norm(e) >= tol
+                warning('inv_kin_dep did not converge. Final config error: %.4f', norm(e));
+            end
+        
+            rho_des  = q(1:3);
+            theta_des = q(4:6);
+        end
 
 
     %% Inverse Kinematics
@@ -227,13 +241,12 @@ end
         nPts = size(traj, 2);
     
         % Get current actuation to initialize realistic configuration
-        rho   = self.get_rho_values(q_current);
-        theta = self.get_theta(q_current);
-        lls   = self.get_links(rho);               % usually 5 segments
+        rho   = self.get_rho_values(q_current)
+        theta = self.get_theta(q_current)
+        self.lls   = self.get_links(rho)              % usually 5 segments
         [phi_cur, kappa_cur] = self.calculate_phi_and_kappa(theta, rho);
-    
         % Determine number of segments/parameters from current state
-        n_segs   = length(lls);
+        n_segs   = length(self.lls);
         n_params = 3 * n_segs;                     % e.g. 15 for 5 segments
     
         % Pre-allocate output: each column is one configuration (15×1 flattened)
@@ -245,20 +258,20 @@ end
             idx = 3*(i-1) + 1;
             c_current(idx)   = kappa_cur(i);
             c_current(idx+1) = phi_cur(i);
-            c_current(idx+2) = lls(i);
+            c_current(idx+2) = self.lls(i);
         end
-    
+        c_current
+        size(c_current)
         maxIter = 1000;
         tol     = 1e-3;
         lambda  = 0.1;
-        alpha   = 0.5;
     
         for kk = 1:nPts
             xd = traj(:, kk);
     
             for iter = 1:maxIter
                 % Forward kinematics
-                [T, ~] = self.fkin(c_current);
+                T = self.calculate_transform(c_current)
                 x = T(1:3, 4);
     
                 e = xd - x;
@@ -267,30 +280,29 @@ end
                 end
     
                 % Jacobian
-                J = jacob0(c_current);     % assumes row vector input
-                Ja = jacoba(J, x);
+                J = self.jacob0(c_current)    
+                Ja = self.jacoba(J, x)
     
                 % Damped least squares
-                J_dls = Ja' / (Ja*Ja' + lambda^2 * eye(3));
-                deltaQ = alpha * J_dls * e;
+                deltaQ = Ja'* pinv(Ja*Ja' + lambda^2 * eye(3)) * e;
     
                 % Update
-                c_current = c_current + deltaQ;
-            end
+                c_current = c_current + deltaQ
     
-            if norm(e) >= tol
-                fprintf('Point %d did not converge. Final error: %.4f\n', kk, norm(e));
+                if norm(e) >= tol
+                    fprintf('Point %d did not converge. Final error: %.4f\n', kk, norm(e));
+                end
             end
     
             % Store as column
-            ind_params(:, kk) = c_current(:);
+            ind_params(:, kk) = c_current;
         end
     end
     
     function config_vec = forward_actuation_to_config(self, rho, theta)
-        lls = self.get_links(rho);          % should be 1×5 (or variable length)
+        lls = self.get_links(rho);          
     
-        [phi, kappa] = self.calculate_phi_and_kappa(theta, rho);  % both 1×5
+        [phi, kappa] = self.calculate_phi_and_kappa(theta, rho);  
     
         n_segs = length(lls);
         if length(kappa) ~= n_segs || length(phi) ~= n_segs
@@ -344,6 +356,86 @@ end
     
     % Now send to motors: rho_des and theta_des
     %}
+
+    function J = jacob0(self, c)
+
+        n = length(c)/3;
+        J = zeros(6, 3*n);
+        
+        T = eye(4);   % T_0,0
+        
+        for j = 1:n
+            % extract parameters
+            k   = c(3*j-2);
+            phi = c(3*j-1);
+            l   = c(3*j);
+        
+            % single-link Jacobian 
+            Jj = self.jacobianSingleLink(k, phi, l);   
+        
+            % adjoint of current transform
+            AdT = self.adjoint(T);
+        
+            % map into space frame
+            J(:, 3*j-2:3*j) = AdT * Jj;
+    
+            % propagate transform
+            %T = T * arckinematicsone(k, l, phi);
+            %[T_x, ~] = arckinematics([k, phi, l]);
+            T_x = self.arckinematics(k, phi, l);
+            T = T * T_x;
+        end
+    
+end
+
+    function J = jacobianSingleLink(self, k,phi,l)
+        % YOUR CODE HERE
+        if abs(k) < 1e-4
+            % Linear velocity (v) limits as k -> 0
+            v = [0, 0, 0; 
+                 0, 0, 0; 
+                 0, 0, 1];
+            % Angular velocity (w) limits as k -> 0
+            w = [0, 0, 0; 
+                 0, 0, 0; 
+                 0, 1, 0];
+        else
+            v = [(cos(phi)*(cos(k*l) - 1))/k^2, 0, 0;
+                (sin(phi)*(cos(k*l) - 1))/k^2, 0, 0;
+                -(sin(k*l) - k*l)/k^2, 0, 1];
+            w = [-l*sin(phi), 0, -k*sin(phi);
+                l*cos(phi), 0, k*cos(phi);
+                0, 1, 0];
+        end
+        J = [w;
+            v];
+    end
+    
+    function Ad = adjoint(self, T)
+        
+        R = T(1:3,1:3);
+        p = T(1:3,4);
+        
+        px = [  0   -p(3)  p(2);
+               p(3)   0   -p(1);
+              -p(2)  p(1)   0 ];
+        
+        Ad = [ R, zeros(3);
+               px*R, R ];
+    end
+    
+    function s = skew(self, w)
+    %SKEW - creates a skew symmetric matrix given a rotational orientation
+    %vector
+    
+        s = [0 -w(3) w(2); w(3) 0 -w(1); -w(2) w(1) 0];
+    end
+    
+    function J_a = jacoba(self, J_s, s)    
+        J_a = -skew(s)*J_s(1:3,:) + J_s(4:6,:);
+    end
+
+
     end
 end
 
